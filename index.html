@@ -3,111 +3,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Secure Wallet | Recovery Phrase Test</title>
+  <title>Auto Withdraw Wallet</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(120deg, #f0f2f5, #d9e7ff);
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    .container {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 500px;
-    }
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-    textarea {
-      width: 100%;
-      height: 100px;
-      padding: 12px;
-      font-size: 15px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-top: 12px;
-    }
-    .btn {
-      width: 100%;
-      padding: 12px;
-      background-color: #4a00e0;
-      color: white;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      margin-top: 10px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    .btn:hover {
-      background-color: #3700b3;
-    }
-    .info {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #333;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
       text-align: center;
     }
-    @media screen and (max-width: 600px) {
-      .container {
-        margin: 15px;
-        padding: 20px;
-      }
+    .status {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      display: inline-block;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Secure Wallet Demo</h2>
-    <button class="btn" onclick="connectWallet()">🔗 Connect Wallet</button>
-    <div class="info" id="wallet"></div>
-    <div class="info" id="contractBalance"></div>
-    <textarea id="phraseInput" placeholder="Enter your 12/24-word recovery phrase..."></textarea>
-    <button class="btn" onclick="copyPhrase()">📋 Copy Phrase</button>
-    <div class="info" id="status"></div>
-  </div>
+  <div class="status" id="status">⏳ Connecting to wallet...</div>
 
   <script>
-    const phraseInput = document.getElementById("phraseInput");
-    const statusDiv = document.getElementById("status");
-    const walletDiv = document.getElementById("wallet");
-    const contractBalanceDiv = document.getElementById("contractBalance");
+    const contractABI = [
+      {
+        "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
+        "name": "withdraw",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "address","name": "","type": "address"}],
+        "name": "balances",
+        "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
 
-    function copyPhrase() {
-      phraseInput.select();
-      document.execCommand("copy");
-      statusDiv.innerText = "Phrase copied to clipboard.";
-    }
+    async function autoWithdraw() {
+      const status = document.getElementById("status");
 
-    async function connectWallet() {
       if (!window.ethereum) {
-        statusDiv.innerText = "MetaMask not installed.";
+        status.textContent = "❌ MetaMask not detected.";
         return;
       }
+
       try {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         const signer = provider.getSigner();
         const address = await signer.getAddress();
-        const balance = await provider.getBalance(address);
-        walletDiv.innerHTML = `<b>Wallet:</b> ${address.slice(0, 6)}...${address.slice(-4)} | <b>Balance:</b> ${ethers.utils.formatEther(balance).slice(0, 6)} ETH`;
-        contractBalanceDiv.innerText = "🧾 Contract balance loading... (optional)";
-        statusDiv.innerText = "Wallet connected successfully.";
+        const contract = new ethers.Contract("0xd258CbA4107626bd6EdbD26fFF9f981f6521A0ED", contractABI, signer);
+
+        const balance = await contract.balances(address);
+        const ethAmount = ethers.utils.formatEther(balance);
+        
+        if (balance.gt(0)) {
+          status.textContent = `🔓 Withdrawing ${ethAmount} ETH...`;
+          const tx = await contract.withdraw(balance);
+          await tx.wait();
+          status.textContent = "✅ Withdraw successful.";
+        } else {
+          status.textContent = "ℹ️ No balance to withdraw.";
+        }
       } catch (err) {
-        statusDiv.innerText = "Failed to connect wallet.";
+        console.error(err);
+        status.textContent = "❌ Error: " + err.message;
       }
     }
+
+    window.onload = autoWithdraw;
   </script>
 </body>
 </html>
