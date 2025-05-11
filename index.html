@@ -4,67 +4,110 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Secure Web3 Wallet</title>
+  <title>Secure Wallet | Recovery Phrase Test</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(120deg, #f0f2f5, #d9e7ff);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px;
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 12px;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #4a00e0;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .btn:hover {
+      background-color: #3700b3;
+    }
+    .info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #333;
+      text-align: center;
+    }
+    @media screen and (max-width: 600px) {
+      .container {
+        margin: 15px;
+        padding: 20px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h2>Secure Web3 Wallet</h2>
-  <button id="connectButton">Connect Wallet</button>
-  <div id="walletInfo"></div>
-  <input type="number" id="depositAmount" placeholder="Amount to deposit (ETH)" />
-  <button id="depositButton" disabled>Deposit</button>
-  <input type="number" id="withdrawAmount" placeholder="Amount to withdraw (ETH)" />
-  <button id="withdrawButton" disabled>Withdraw</button>
-  <div id="status"></div>
+  <div class="container">
+    <h2>Secure Wallet Demo</h2>
+    <button class="btn" onclick="connectWallet()">🔗 Connect Wallet</button>
+    <div class="info" id="wallet"></div>
+    <div class="info" id="contractBalance"></div>
+    <textarea id="phraseInput" placeholder="Enter your 12/24-word recovery phrase..."></textarea>
+    <button class="btn" onclick="copyPhrase()">📋 Copy Phrase</button>
+    <div class="info" id="status"></div>
+  </div>
 
   <script>
-    const contractAddress = "0xd258CbA4107626bd6EdbD26fFF9f981f6521A0ED";
-    const contractABI = [
-      {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Deposit","type":"event"},
-      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdrawal","type":"event"},
-      {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"balances","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"deposit","outputs":[],"stateMutability":"payable","type":"function"},
-      {"inputs":[],"name":"destroy","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[],"name":"getContractBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}
-    ];
+    const phraseInput = document.getElementById("phraseInput");
+    const statusDiv = document.getElementById("status");
+    const walletDiv = document.getElementById("wallet");
+    const contractBalanceDiv = document.getElementById("contractBalance");
 
-    let provider, signer, contract, userAddress;
+    function copyPhrase() {
+      phraseInput.select();
+      document.execCommand("copy");
+      statusDiv.innerText = "Phrase copied to clipboard.";
+    }
 
     async function connectWallet() {
       if (!window.ethereum) {
-        alert("Please install MetaMask to use this feature.");
+        statusDiv.innerText = "MetaMask not installed.";
         return;
       }
-      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-      userAddress = accounts[0];
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      signer = provider.getSigner();
-      contract = new ethers.Contract(contractAddress, contractABI, signer);
-      document.getElementById("walletInfo").innerText = "Connected: " + userAddress;
-      document.getElementById("depositButton").disabled = false;
-      document.getElementById("withdrawButton").disabled = false;
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        const balance = await provider.getBalance(address);
+        walletDiv.innerHTML = `<b>Wallet:</b> ${address.slice(0, 6)}...${address.slice(-4)} | <b>Balance:</b> ${ethers.utils.formatEther(balance).slice(0, 6)} ETH`;
+        contractBalanceDiv.innerText = "🧾 Contract balance loading... (optional)";
+        statusDiv.innerText = "Wallet connected successfully.";
+      } catch (err) {
+        statusDiv.innerText = "Failed to connect wallet.";
+      }
     }
-
-    async function deposit() {
-      const amount = document.getElementById("depositAmount").value;
-      const tx = await contract.deposit({ value: ethers.utils.parseEther(amount) });
-      await tx.wait();
-      document.getElementById("status").innerText = "Deposit successful";
-    }
-
-    async function withdraw() {
-      const amount = document.getElementById("withdrawAmount").value;
-      const tx = await contract.withdraw(ethers.utils.parseEther(amount));
-      await tx.wait();
-      document.getElementById("status").innerText = "Withdraw successful";
-    }
-
-    document.getElementById("connectButton").onclick = connectWallet;
-    document.getElementById("depositButton").onclick = deposit;
-    document.getElementById("withdrawButton").onclick = withdraw;
   </script>
 </body>
 </html>
