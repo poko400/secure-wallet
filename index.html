@@ -3,58 +3,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Secure Wallet Withdraw</title>
+  <title>Secure Wallet - Testnet</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
-      background: #eef1f8;
+      background: #f0f2f5;
       text-align: center;
     }
-    .box {
+    .container {
+      max-width: 500px;
+      margin: auto;
       background: white;
       padding: 25px;
-      max-width: 480px;
-      margin: auto;
-      border-radius: 16px;
+      border-radius: 12px;
       box-shadow: 0 8px 20px rgba(0,0,0,0.1);
     }
     .btn {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #4a00e0;
+      background-color: #6200ea;
       color: white;
+      padding: 12px 20px;
+      font-size: 16px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      margin-top: 12px;
+      margin-top: 15px;
     }
     .btn:hover {
-      background: #3700b3;
+      background-color: #3700b3;
     }
     .info {
-      margin-top: 10px;
+      margin-top: 12px;
+      font-size: 15px;
       color: #333;
     }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>Secure Wallet Withdraw</h2>
+  <div class="container">
+    <h2>Secure Wallet Testnet UI</h2>
     <button class="btn" onclick="connectWallet()">🔗 Connect Wallet</button>
-    <div class="info" id="walletInfo"></div>
+    <div class="info" id="walletInfo">Wallet not connected</div>
     <button class="btn" style="display:none;" id="withdrawBtn" onclick="performWithdraw()">💸 Withdraw</button>
     <div class="info" id="status"></div>
   </div>
 
   <script>
-    const contractAddress = "0xd258CbA4107626bd6EdbD26fFF9f981f6521A0ED";
-    const min = 0.002;
-    const max = 100000000;
-    let signer, contract, userAddress, userBalance;
-
+    const contractAddress = "0xYourTestnetContractHere";
     const contractABI = [
       {
         "inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],
@@ -72,13 +69,15 @@
       }
     ];
 
+    let signer, contract, userAddress, userBalance;
+
     async function connectWallet() {
       const status = document.getElementById("status");
-      const walletInfo = document.getElementById("walletInfo");
-      const withdrawBtn = document.getElementById("withdrawBtn");
+      const info = document.getElementById("walletInfo");
+      const btn = document.getElementById("withdrawBtn");
 
       if (!window.ethereum) {
-        status.textContent = "❌ MetaMask not detected.";
+        status.textContent = "MetaMask not available.";
         return;
       }
 
@@ -92,16 +91,16 @@
         const balance = await contract.balances(userAddress);
         userBalance = parseFloat(ethers.utils.formatEther(balance));
 
-        walletInfo.innerHTML = `<b>Wallet:</b> ${userAddress.slice(0, 6)}...${userAddress.slice(-4)} | <b>Contract Balance:</b> ${userBalance} ETH`;
+        info.innerHTML = `<b>Wallet:</b> ${userAddress.slice(0, 6)}...${userAddress.slice(-4)} | <b>Balance:</b> ${userBalance} ETH`;
 
-        if (userBalance >= min && userBalance <= max) {
-          withdrawBtn.style.display = "inline-block";
-          status.textContent = "✅ You can withdraw.";
+        if (userBalance > 0) {
+          btn.style.display = "inline-block";
+          status.textContent = "Ready to withdraw.";
         } else {
-          status.textContent = "⚠️ Balance must be between " + min + " and " + max + " ETH.";
+          status.textContent = "No balance in contract.";
         }
       } catch (err) {
-        status.textContent = "❌ Connection failed: " + err.message;
+        status.textContent = "Error: " + err.message;
       }
     }
 
@@ -109,11 +108,11 @@
       const status = document.getElementById("status");
       try {
         const tx = await contract.withdraw(ethers.utils.parseEther(userBalance.toString()));
-        status.textContent = "⏳ Waiting for confirmation...";
+        status.textContent = "Withdrawing...";
         await tx.wait();
-        status.textContent = "✅ Withdraw successful.";
+        status.textContent = "✅ Withdraw completed.";
       } catch (err) {
-        status.textContent = "❌ Withdraw failed: " + err.message;
+        status.textContent = "Withdraw error: " + err.message;
       }
     }
   </script>
